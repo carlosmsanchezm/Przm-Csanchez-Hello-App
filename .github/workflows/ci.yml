@@ -55,7 +55,7 @@ jobs:
 
       # Scan the remote image in GHCR (no local Podman socket needed)
       - name: Trivy scan (image in GHCR)
-        uses: aquasecurity/trivy-action@v0.28.0
+        uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: ghcr.io/${{ env.IMAGE }}:${{ env.TAG }}
           format: 'table'
