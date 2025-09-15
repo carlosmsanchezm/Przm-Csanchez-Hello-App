@@ -46,7 +46,6 @@ jobs:
             ./Dockerfile
           context: .
           # Build both architectures and create a manifest list
-          archs: amd64,arm64
           platforms: linux/amd64,linux/arm64
 
       # Push with Podman
