@@ -23,6 +23,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Enable binfmt (qemu) for cross-arch builds
+      - name: Enable binfmt (qemu) for cross-arch builds
+        run: sudo podman run --rm --privileged docker.io/tonistiigi/binfmt --install all
+
       # Login to GHCR using Podman (rootless/daemonless)
       - name: Podman login (GHCR)
         uses: redhat-actions/podman-login@v1
@@ -31,8 +35,8 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Build with Buildah
-      - name: Build (Buildah)
+      # Build with Buildah multi-arch
+      - name: Build (Buildah multi-arch)
         id: build
         uses: redhat-actions/buildah-build@v2
         with:
@@ -41,6 +45,9 @@ jobs:
           containerfiles: |
             ./Dockerfile
           context: .
+          # Build both architectures and create a manifest list
+          archs: amd64,arm64
+          platforms: linux/amd64,linux/arm64
 
       # Push with Podman
       - name: Push to GHCR (Podman)

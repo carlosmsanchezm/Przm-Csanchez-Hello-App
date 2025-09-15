@@ -17,6 +17,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Enable binfmt (qemu) for cross-arch builds
+      - name: Enable binfmt (qemu) for cross-arch builds
+        run: sudo podman run --rm --privileged docker.io/tonistiigi/binfmt --install all
+
       - name: Login to GHCR (Podman)
         uses: redhat-actions/podman-login@v1
         with:
@@ -34,7 +38,7 @@ jobs:
           echo "major=$MAJOR" >> $GITHUB_OUTPUT
           echo "minor=$MINOR" >> $GITHUB_OUTPUT
 
-      - name: Build (Buildah)
+      - name: Build (Buildah multi-arch)
         id: build
         uses: redhat-actions/buildah-build@v2
         with:
@@ -47,6 +51,9 @@ jobs:
           containerfiles: |
             ./Dockerfile
           context: .
+          # Build both architectures and create a manifest list
+          archs: amd64,arm64
+          platforms: linux/amd64,linux/arm64
           labels: |
             org.opencontainers.image.title=hello-app
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
