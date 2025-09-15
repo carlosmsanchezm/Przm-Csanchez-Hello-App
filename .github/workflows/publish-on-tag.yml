@@ -1,0 +1,73 @@
+name: publish-on-tag
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE: ${{ github.repository_owner }}/hello-app
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to GHCR (Podman)
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Parse semver
+        id: semver
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "major=$MAJOR" >> $GITHUB_OUTPUT
+          echo "minor=$MINOR" >> $GITHUB_OUTPUT
+
+      - name: Build (Buildah)
+        id: build
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE }}
+          tags: |
+            v${{ steps.semver.outputs.version }}
+            v${{ steps.semver.outputs.major }}.${{ steps.semver.outputs.minor }}
+            v${{ steps.semver.outputs.major }}
+            latest
+          containerfiles: |
+            ./Dockerfile
+          context: .
+          labels: |
+            org.opencontainers.image.title=hello-app
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.semver.outputs.version }}
+
+      - name: Push (Podman)
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build.outputs.image }}
+          tags: ${{ steps.build.outputs.tags }}
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trivy scan (remote image)
+        uses: aquasecurity/trivy-action@v0.28.0
+        with:
+          image-ref: ghcr.io/${{ env.IMAGE }}:v${{ steps.semver.outputs.version }}
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+        env:
+          TRIVY_USERNAME: ${{ github.repository_owner }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}

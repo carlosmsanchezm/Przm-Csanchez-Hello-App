@@ -1,0 +1,17 @@
+name: release-please
+on:
+  push:
+    branches: ["main"]
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/release-please-action@v4
+        with:
+          release-type: simple
+          package-name: hello-app
+          include-v-in-tag: true
+          bump-minor-pre-major: true
